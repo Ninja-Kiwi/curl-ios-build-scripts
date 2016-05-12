@@ -29,39 +29,42 @@ module CurlBuilder
 
     private
     def compile_for(architecture)
-      platform = platform_for architecture
-      tools    = tools_for platform
-      flags    = compilation_flags_for platform, architecture
+      (platforms_for architecture).each do |platform|
+        tools        = tools_for platform
+        flags        = compilation_flags_for platform, architecture
 
-      info {
-        "Building libcurl #{param(setup(:libcurl_version))} for " +
-          "#{param(platform)} #{param(sdk_version_for(platform))} (#{architecture})..."
-      }
-      debug {
-        "Tools:\n  #{tools.collect { |tool, path| "#{magenta(tool.to_s.upcase)}: #{param(path)}" }.join("\n  ")}"
-      }
-      debug {
-        "Flags:\n  #{flags.collect { |flag, value| "#{magenta(flag.to_s.upcase)}: #{param(value)}" }.join("\n  ")}"
-      }
+        info {
+          "Building libcurl #{param(setup(:libcurl_version))} for " +
+            "#{param(platform)} #{param(sdk_version_for(platform))} (#{architecture})..."
+        }
+        debug {
+          "Tools:\n  #{tools.collect { |tool, path| "#{magenta(tool.to_s.upcase)}: #{param(path)}" }.join("\n  ")}"
+        }
+        debug {
+          "Flags:\n  #{flags.collect { |flag, value| "#{magenta(flag.to_s.upcase)}: #{param(value)}" }.join("\n  ")}"
+        }
 
-      FileUtils.mkdir_p output_dir_for architecture
+        FileUtils.mkdir_p output_dir_for architecture
 
-      ensure_configure_script
-      # Bail out and signal failure to avoid passing this architecture to the Packer
-      return false unless configure architecture, tools, flags
-
-      # Will return true or false to signal success/failure
-      make architecture
+        ensure_configure_script
+        # Bail out and signal failure to avoid passing this arch to the Packer
+        return false unless configure architecture, tools, flags
+        return false unless make architecture
+      end
+      
+      return true
     end
 
-    def platform_for(architecture)
+    def platforms_for(architecture)
       case architecture
-      when "x86_64"
-        setup(:osx_sdk_version) == "none" ? "iPhoneSimulator" : "MacOSX"
-      when "i386"
-        "iPhoneSimulator"
+      when "x86_64", "i386"
+        if setup(:osx_sdk_version) != "none" then
+          ["iPhoneSimulator", "MacOSX"]
+        else
+          ["iPhoneSimulator"]
+        end
       else
-        "iPhoneOS"
+        ["iPhoneOS"]
       end
     end
 
@@ -126,7 +129,7 @@ module CurlBuilder
     end
 
     def configure(architecture, tools, compilation_flags)
-      host = (architecture != "arm64" ? architecture : "arm") << "-apple-darwin"
+      host = (architecture != "arm64" ? architecture.dup : "arm") << "-apple-darwin"
 
       flags  = CurlBuilder.build_flags(configuration[:flags])
       flags += CurlBuilder.build_protocols(configuration[:protocols])
