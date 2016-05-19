@@ -17,25 +17,33 @@ module CurlBuilder
 
     # Interface
 
+    Target = Struct.new(:platform, :arch, :sdk)
+
     def compile
       info { "Attempting to compile for architectures: #{setup(:architectures).join(", ")}..." }
+      
+      targets = []
 
-      # Attempt to compile all architectures and return a list of the ones that were successful
-      setup(:architectures).collect { |architecture|
-        compile_for(architecture) ? architecture : nil
-      }.compact
-    end
+      setup(:architectures).each do |arch|
+        
+        target = make_target('ios', arch)
+        targets << target unless target == nil
+        
+        if setup(:osx_sdk_version) != "none" then
+          target = make_target('osx', arch)
+          targets << target unless target == nil
+        end
+        
+      end
 
-
-    private
-    def compile_for(architecture)
-      (platforms_for architecture).each do |platform|
-        tools        = tools_for platform
-        flags        = compilation_flags_for platform, architecture
+      targets.each do |target|
+      
+        tools        = tools_for target.sdk
+        flags        = compilation_flags_for target.sdk, target.arch
 
         info {
           "Building libcurl #{param(setup(:libcurl_version))} for " +
-            "#{param(platform)} #{param(sdk_version_for(platform))} (#{architecture})..."
+            "#{param(target.sdk)} #{param(sdk_version_for(target.sdk))} (#{target.arch})..."
         }
         debug {
           "Tools:\n  #{tools.collect { |tool, path| "#{magenta(tool.to_s.upcase)}: #{param(path)}" }.join("\n  ")}"
@@ -44,28 +52,44 @@ module CurlBuilder
           "Flags:\n  #{flags.collect { |flag, value| "#{magenta(flag.to_s.upcase)}: #{param(value)}" }.join("\n  ")}"
         }
 
-        FileUtils.mkdir_p output_dir_for architecture
+        FileUtils.mkdir_p output_dir_for target.platform, target.arch
 
         ensure_configure_script
-        # Bail out and signal failure to avoid passing this arch to the Packer
-        return false unless configure architecture, tools, flags
-        return false unless make architecture
+        
+        # Bail out and signal failure to avoid passing this target to the Packer
+        ##return unless configure target.platform, target.arch, tools, flags
+        ##return unless make target.arch
       end
       
-      return true
+      targets.compact
     end
 
-    def platforms_for(architecture)
-      case architecture
-      when "x86_64", "i386"
-        if setup(:osx_sdk_version) != "none" then
-          ["iPhoneSimulator", "MacOSX"]
-        else
-          ["iPhoneSimulator"]
-        end
-      else
-        ["iPhoneOS"]
-      end
+    private
+    
+    def make_target(platform, architecture)
+    
+      target_mappings = {
+        'ios' => {
+          'i386' => 'iPhoneSimulator',
+          'x86_64' => 'iPhoneSimulator',
+          'armv7' => 'iPhoneOS',
+          'armv7s' => 'iPhoneOS',
+          'arm64' => 'iPhoneOS'
+        },
+        'osx' => {
+         'i386' => 'MacOSX',
+         'x86_64' => 'MacOSX'
+        }
+      }
+      
+      sdk = target_mappings[platform][architecture]
+      return unless sdk != nil
+      Target.new(platform, architecture, sdk)
+    
+    end
+    
+    def compile_for(architecture)
+      
     end
 
     def tools_for(platform)
@@ -128,7 +152,7 @@ module CurlBuilder
       end
     end
 
-    def configure(architecture, tools, compilation_flags)
+    def configure(platform, architecture, tools, compilation_flags)
       host = (architecture != "arm64" ? architecture.dup : "arm") << "-apple-darwin"
 
       flags  = CurlBuilder.build_flags(configuration[:flags])
@@ -145,7 +169,7 @@ module CurlBuilder
         --disable-shared
         --enable-static
         #{flags.join(" ")}
-        --prefix="#{output_dir_for architecture}"
+        --prefix="#{output_dir_for platform, architecture}"
       }
 
       flattened_command = configure_command.join(" ")
