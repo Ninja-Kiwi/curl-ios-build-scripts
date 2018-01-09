@@ -1,7 +1,7 @@
 Curl build utility for iOS and OSX
 ==================================
 
-Script to build curl for iOS 5+ and OSX 10.7+. Supports:
+Script to build curl for iOS 6+ and OSX 10.7+. Supports:
 
 - Mac OSX (i386-osx)
 - iPhoneSimulator (i386-sim)
