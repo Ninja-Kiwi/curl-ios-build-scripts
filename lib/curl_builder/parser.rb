@@ -85,16 +85,16 @@ module CurlBuilder
           end
         end
 
-        parser.on("--sdk-version SDK",
-                  "Use specific SDK version",
-                  "  Defaults to #{param(setup[:sdk_version])}") do |sdk|
-          setup[:sdk_version] = sdk
+        parser.on("--ios-sdk-version SDK",
+                  "Use specific iOS SDK version",
+                  "  Defaults to #{param(setup[:ios_sdk_version])}") do |sdk|
+          setup[:ios_sdk_version] = sdk
         end
 
-        parser.on("--osx-sdk-version SDK",
-                  "Use specific SDK version",
-                  "  Defaults to #{param(setup[:osx_sdk_version])}") do |sdk|
-          setup[:osx_sdk_version] = sdk
+        parser.on("--macos-sdk-version SDK",
+                  "Use specific macOS SDK version",
+                  "  Defaults to #{param(setup[:macos_sdk_version])}") do |sdk|
+          setup[:macos_sdk_version] = sdk
         end
 
         parser.on("--log-level LOG_LEVEL",

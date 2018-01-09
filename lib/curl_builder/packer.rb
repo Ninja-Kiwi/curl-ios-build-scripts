@@ -70,6 +70,8 @@ module CurlBuilder
 
       binaries = archs.collect { |arch| binary_path_for platform, arch }
 
+      info { "Binaries: #{binaries.join(" ")}" }
+
       FileUtils.mkdir_p result_lib_dir platform
 
       `lipo -create #{binaries.join(" ")} -output #{packed_lib_path_with platform} &>/dev/null`

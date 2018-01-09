@@ -29,7 +29,7 @@ module CurlBuilder
         target = make_target('ios', arch)
         targets << target unless target == nil
         
-        if setup(:osx_sdk_version) != "none" then
+        if setup(:macos_sdk_version) != "none" then
           target = make_target('osx', arch)
           targets << target unless target == nil
         end
@@ -56,9 +56,8 @@ module CurlBuilder
 
         ensure_configure_script
         
-        # Bail out and signal failure to avoid passing this target to the Packer
-        ##return unless configure target.platform, target.arch, tools, flags
-        ##return unless make target.arch
+        return unless configure target.platform, target.arch, tools, flags
+        return unless make target.arch
       end
       
       targets.compact
@@ -112,21 +111,19 @@ module CurlBuilder
 
     def sdk_version_for(platform)
       if platform == "iPhoneOS" || platform == "iPhoneSimulator"
-        setup(:sdk_version)
+        setup(:ios_sdk_version)
       else
-        setup(:osx_sdk_version)
+        setup(:macos_sdk_version)
       end
     end
 
     def compilation_flags_for(platform, architecture)
       if platform == "iPhoneSimulator"
-        version = "6.0"
-        min_version = "-miphoneos-version-min=#{version}"
+        min_version = "-miphoneos-version-min=6.0"
       elsif platform == "iPhoneOS"
-        version = architecture == "arm64" ? "6.0" : "5.0"
-        min_version = "-miphoneos-version-min=#{version}"
+        min_version = "-miphoneos-version-min=6.0"
       else
-        min_version = "-mmacosx-version-min=10.7"
+        min_version = "-mmacosx-version-min=10.7 -DMAC_OS_X_VERSION_MAX_ALLOWED=1070"
       end
 
       sdk_version = sdk_version_for platform
